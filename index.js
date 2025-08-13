@@ -6,10 +6,12 @@ const { createCanvas, loadImage } = require('canvas');
 const poseDetection = require('@tensorflow-models/pose-detection');
 
 const admin = require('firebase-admin');
-const serviceAccount = require('./firebase-secret.json'); 
+
+// Load Firebase credentials from environment variable
+const firebaseConfig = JSON.parse(process.env.FIREBASE_CONFIG);
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(firebaseConfig)
 });
 
 const db = admin.firestore();
@@ -66,7 +68,6 @@ app.post('/pose', upload.single('image'), async (req, res) => {
       documentId: docRef.id,
       keypoints
     });
-    console.log(keypoints);
 
   } catch (err) {
     console.error('Error processing image:', err);
