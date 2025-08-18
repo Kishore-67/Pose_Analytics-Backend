@@ -13,8 +13,11 @@ admin.initializeApp({
 });
 
 const db = admin.firestore();
-
 const app = express();
+
+// 🔹 Needed to read JSON body (for filePath)
+app.use(express.json());
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 let detector;
@@ -33,12 +36,18 @@ async function initDetector() {
   console.log('Pose detector initialized with CPU backend');
 }
 
+// 🔹 Modified endpoint
 app.post('/pose', upload.single('image'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No image file provided' });
-  }
-
   try {
+    const { filePath } = req.body; // frontend must send filePath in JSON
+    if (!filePath) {
+      return res.status(400).json({ error: 'filePath is required in request body' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
     const imgBuffer = req.file.buffer;
     const img = await loadImage(imgBuffer);
 
@@ -54,9 +63,11 @@ app.post('/pose', upload.single('image'), async (req, res) => {
 
     const keypoints = poses[0].keypoints;
 
+    // 🔹 Save keypoints + filePath
     const docRef = await db.collection('pose_detections').add({
       timestamp: new Date(),
-      keypoints: keypoints
+      keypoints: keypoints,
+      imagePath: filePath  
     });
 
     console.log(`Saved pose detection with ID: ${docRef.id}`);
@@ -64,9 +75,9 @@ app.post('/pose', upload.single('image'), async (req, res) => {
     res.json({
       message: 'Pose detected and saved to Firestore',
       documentId: docRef.id,
+      imagePath: filePath,
       keypoints
     });
-    console.log(keypoints);
 
   } catch (err) {
     console.error('Error processing image:', err);
